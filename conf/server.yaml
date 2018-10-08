@@ -1,0 +1,39 @@
+server:
+  endpoint: :80
+  http_read_timeout: 3s
+  http_write_timeout: 10s
+  max_head_size: 2048000
+redis:
+  servers:
+    - "39.108.114.84:6379"
+  connTimeout: 10
+  expiredTime: 300
+  emptyCacheExpiredTime: 300
+  prefix: "GK_"
+
+database:
+  host: localhost
+  port: 3306
+  user: root
+  password: cjh
+  db_name: db_somp 
+  max_open_conn_num: 512
+  max_idle_conn_num: 512
+  keep_alive_time: 14400s
+  conn_timeout: 5
+  read_timeout: 3
+  write_timeout: 3
+
+stat:
+  output_cycle: 1
+  stat_file: "stat/SystemManagerService"
+  remote_mode: 0
+  queue_capacity: 10000
+  routine_count: 4 
+
+logger:
+  level: debug
+  filename: log/SystemManagerService.log
+  max_size: 50
+  max_backups: 20
+  max_age: 15
