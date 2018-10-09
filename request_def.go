@@ -15,17 +15,17 @@ type ResponseHead struct {
 }
 
 type SystemManagerUserReqData struct {
-	SysUserId    string                             `json:"sysUserId"`
-	UserName     string                             `json:"userName"`
-	LoginName    string                             `json:"loginName"`
-	UserMobile   string                             `json:"userMobile"`
-	UserEMail    string                             `json:"userEMail"`
-	Passwd       string                             `json:"passwd"`
-	HeadPortrait string                             `json:"headPortrait"`
-	RoleList     []SystemManagerUserReqDataRoleList `json:"roleList"`
+	SysUserId    string                         `json:"sysUserId"`
+	UserName     string                         `json:"userName"`
+	LoginName    string                         `json:"loginName"`
+	UserMobile   string                         `json:"userMobile"`
+	UserEMail    string                         `json:"userEMail"`
+	Passwd       string                         `json:"passwd"`
+	HeadPortrait string                         `json:"headPortrait"`
+	RoleList     []SystemManagerUserReqDataRole `json:"roleList"`
 }
 
-type SystemManagerUserReqDataRoleList struct {
+type SystemManagerUserReqDataRole struct {
 	RoleId string `json:"roleId"`
 }
 
@@ -45,4 +45,32 @@ type SystemManagerUserRespData struct {
 type SystemManagerUserResp struct {
 	ResponseHead
 	Data SystemManagerUserRespData `json:"data"`
+}
+
+type SystemManagerRoleReq struct {
+	RequestHead
+	Data SystemManagerRoleReqData `json:"data"`
+}
+
+type SystemManagerRoleReqData struct {
+	RoleId     string                           `json:"roleId"`
+	RoleName   string                           `json:"roleName"`
+	RoleLevel  int32                            `json:"roleLevel"`
+	RoleParent string                           `json:"roleParent"`
+	UserList   []SystemManagerRoleReqDataUserId `json:"userList"`
+}
+
+type SystemManagerRoleReqDataUserId struct {
+	SysUserId string `json:"sysUserId"`
+}
+
+type SystemManagerRoleResp struct {
+	ResponseHead
+	Data SystemManagerRoleRespData `json:"data"`
+}
+
+type SystemManagerRoleRespData struct {
+	RoleId    string `json:"roleId"`
+	RoleName  string `json:"roleName"`
+	RoleLevel int32  `json:"roleLevel"`
 }
