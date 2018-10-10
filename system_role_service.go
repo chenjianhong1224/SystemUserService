@@ -50,3 +50,69 @@ func (m *system_role_service) addSysRole(systemManagerRole SystemManagerRoleReqD
 	zap.L().Error(fmt.Sprintf("add sys role user[%s] error:%s", systemManagerRole.RoleName, err.Error()))
 	return "", err
 }
+
+/**
+当userList存在时则删除user和role的对应关系，当userList不存在时，则对整个role失效，并删除与其对应的所有关系
+**/
+func (m *system_role_service) deleteSysRole(systemManagerRole SystemManagerRoleReqData, opUserId string) error {
+	var execReqList = []SqlExecRequest{}
+	for i := 0; i < len(systemManagerRole.UserList); i++ {
+		args2 := []interface{}{}
+		args2 = append(args2, opUserId)
+		args2 = append(args2, systemManagerRole.RoleId)
+		args2 = append(args2, systemManagerRole.UserList[i].SysUserId)
+		execReq2 := SqlExecRequest{
+			SQL:  "update t_sys_role_user set Status=0, Update_time=now(), Update_user=? where role_uuid=? and user_uuid=?",
+			Args: args2,
+		}
+		execReqList = append(execReqList, execReq2)
+	}
+	if len(systemManagerRole.UserList) == 0 {
+		args := []interface{}{}
+		args = append(args, opUserId)
+		args = append(args, systemManagerRole.RoleId)
+		execReq := SqlExecRequest{
+			SQL:  "update t_sys_role set Role_status=0, Update_time=now(), Update_user=? where Role_uuid=?",
+			Args: args,
+		}
+		execReqList = append(execReqList, execReq)
+		args3 := []interface{}{}
+		args3 = append(args3, opUserId)
+		args3 = append(args3, systemManagerRole.RoleId)
+		execReq3 := SqlExecRequest{
+			SQL:  "update t_sys_role_user set Status=0, Update_time=now(), Update_user=? where role_uuid=?",
+			Args: args3,
+		}
+		execReqList = append(execReqList, execReq3)
+		execReq4 := SqlExecRequest{
+			SQL:  "update t_sys_role_menu set Status=0, Update_time=now(), Update_user=? where role_uuid=?",
+			Args: args3,
+		}
+		execReqList = append(execReqList, execReq4)
+	}
+	err := m.d.dbCli.TransationExcute(execReqList)
+	return err
+}
+
+func (m *system_role_service) updateSysRole(systemManagerRole SystemManagerRoleReqData, opUserId string) error {
+	var execReqList = []SqlExecRequest{}
+	args := []interface{}{}
+	args = append(args, opUserId)
+	execReq := SqlExecRequest{
+		SQL:  "update t_sys_role set Role_name=?, Is_leaf=?, Parent_uuid=?, Role_level=?, Update_time=now(), Update_user=? where Role_uuid=?",
+		Args: args,
+	}
+	execReqList = append(execReqList, execReq)
+	if len(systemManagerRole.UserList) > 0 {
+		args1 := []interface{}{}
+		args1 = append(args1, opUserId)
+		execReq1 := SqlExecRequest{
+			SQL:  "update t_sys_role_user set status=0, Update_time=now(), Update_user=? where Role_uuid=? and User_uuid=?",
+			Args: args1,
+		}
+		execReqList = append(execReqList, execReq1)
+		for i := 0; i < len(systemManagerRole.UserList); i++ {
+		}
+	}
+	return nil
+}
