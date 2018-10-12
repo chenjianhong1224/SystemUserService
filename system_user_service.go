@@ -76,6 +76,9 @@ func (m *system_user_service) deleteSysUser(userId string, opUserId string) erro
 	return err
 }
 
+/**
+该接口是全量更新接口，先更新用户表，然后把用户角色全失效，再按参数提供的角色进行生效更新或新增
+**/
 func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserReqData, opUserId string) (string, error) {
 	args := []interface{}{}
 	args = append(args, systemManagerUser.SysUserId)
@@ -133,7 +136,7 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 			zap.L().Error(fmt.Sprintf("update sys user error:%s", queryRep.Err.Error()))
 			return "数据库错误", queryRep.Err
 		}
-		if len(queryRep.Rows) == 0 {
+		if len(queryRep.Rows) != 0 {
 			args5 := []interface{}{}
 			args5 = append(args5, opUserId)
 			args5 = append(args5, systemManagerUser.SysUserId)

@@ -94,6 +94,9 @@ func (m *system_role_service) deleteSysRole(systemManagerRole SystemManagerRoleR
 	return err
 }
 
+/**
+该接口是全量更新接口，先更新用户表，然后把用户角色全失效，再按参数提供的角色进行生效更新或新增
+**/
 func (m *system_role_service) updateSysRole(systemManagerRole SystemManagerRoleReqData, opUserId string) error {
 	var execReqList = []SqlExecRequest{}
 	args := []interface{}{}
@@ -103,16 +106,46 @@ func (m *system_role_service) updateSysRole(systemManagerRole SystemManagerRoleR
 		Args: args,
 	}
 	execReqList = append(execReqList, execReq)
-	if len(systemManagerRole.UserList) > 0 {
-		args1 := []interface{}{}
-		args1 = append(args1, opUserId)
-		execReq1 := SqlExecRequest{
-			SQL:  "update t_sys_role_user set status=0, Update_time=now(), Update_user=? where Role_uuid=? and User_uuid=?",
-			Args: args1,
-		}
-		execReqList = append(execReqList, execReq1)
-		for i := 0; i < len(systemManagerRole.UserList); i++ {
-		}
+	args1 := []interface{}{}
+	args1 = append(args1, opUserId)
+	execReq1 := SqlExecRequest{
+		SQL:  "update t_sys_role_user set status=0, Update_time=now(), Update_user=? where Role_uuid=? and User_uuid=?",
+		Args: args1,
 	}
-	return nil
+	execReqList = append(execReqList, execReq1)
+	for i := 0; i < len(systemManagerRole.UserList); i++ {
+		args2 := []interface{}{}
+		args2 = append(args2, systemManagerRole.RoleId)
+		args2 = append(args2, systemManagerRole.UserList[0].SysUserId)
+		args2 = append(args2, opUserId)
+		args2 = append(args2, opUserId)
+		execReq2 := SqlExecRequest{
+			SQL:  "insert into t_sys_role_user(Role_uuid, User_uuid, Status, Create_time, Create_user, Update_time, Update_user) values (?, ?, 1, now(), ?, now(), ?) ON DUPLICATE KEY UPDATE Status = 1",
+			Args: args2,
+		}
+		execReqList = append(execReqList, execReq2)
+	}
+	err := m.d.dbCli.TransationExcute(execReqList)
+	return err
+}
+
+func (m *system_role_service) querySysUser(roleName string) ([]tSysRole, error) {
+	args := []interface{}{}
+	args = append(args, roleName)
+	tmp := tSysRole{}
+	queryReq := &SqlQueryRequest{
+		SQL:         "select Role_id, Role_uuid, Role_name, Is_leaf, Parent_uuid, Role_level, Role_status, Create_time, Create_user, Update_time, Update_user from t_sys_role where Role_name = ?",
+		Args:        args,
+		RowTemplate: tmp}
+	reply := m.d.dbCli.Query(queryReq)
+	queryRep, _ := reply.(*SqlQueryReply)
+	if queryRep.Err != nil {
+		zap.L().Error(fmt.Sprintf("query sys role error:%s", queryRep.Err.Error()))
+		return nil, queryRep.Err
+	}
+	var returnRoles []tSysRole = []tSysRole{}
+	for i := 0; i < len(queryRep.Rows); i++ {
+		returnRoles = append(returnRoles, queryRep.Rows[i].(tSysRole))
+	}
+	return returnRoles, nil
 }
