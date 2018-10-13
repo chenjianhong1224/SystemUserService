@@ -19,8 +19,11 @@ type clientInfo struct {
 }
 
 type httpHandler struct {
-	cfg          *Config
-	systemUserSv *system_user_service
+	cfg               *Config
+	systemUserSv      *system_user_service
+	systemRoleSv      *system_role_service
+	systemMenuSv      *system_menu_service
+	systemPrivilegeSv *system_privilege_service
 }
 
 func (ci *clientInfo) inetAton() {
@@ -94,9 +97,37 @@ func (m *httpHandler) process(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.Cmd == 1000 {
+			m.addSysUser(body, w)
 		} else if req.Cmd == 1002 {
+			m.updateSysUser(body, w)
 		} else if req.Cmd == 1004 {
+			m.deleteSysUser(body, w)
 		} else if req.Cmd == 1006 {
+			m.querySysUser(body, w)
+		} else if req.Cmd == 1020 {
+			m.addSysRole(body, w)
+		} else if req.Cmd == 1022 {
+			m.updateSysRole(body, w)
+		} else if req.Cmd == 1024 {
+			m.deleteSysRole(body, w)
+		} else if req.Cmd == 1026 {
+			m.querySysRole(body, w)
+		} else if req.Cmd == 1040 {
+			m.addSysMenu(body, w)
+		} else if req.Cmd == 1042 {
+			m.updateSysMenu(body, w)
+		} else if req.Cmd == 1044 {
+			m.deleteSysMenu(body, w)
+		} else if req.Cmd == 1046 {
+			m.querySysMenu(body, w)
+		} else if req.Cmd == 1060 {
+			m.addSysPrivilege(body, w)
+		} else if req.Cmd == 1062 {
+			m.updateSysPrivilege(body, w)
+		} else if req.Cmd == 1064 {
+			m.deleteSysPrivilege(body, w)
+		} else if req.Cmd == 1066 {
+			m.querySysPrivilege(body, w)
 		} else {
 			var respHead ResponseHead
 			respHead = ResponseHead{RequestId: req.RequestId, ErrorCode: 9999, Cmd: req.Cmd, ErrorMsg: "cmd不合法"}
@@ -113,222 +144,488 @@ func (m *httpHandler) process(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//func (m *httpHandler) wholeSalerRegister(body []byte, w http.ResponseWriter) {
+func (m *httpHandler) addSysUser(body []byte, w http.ResponseWriter) {
+	var req SystemManagerUserReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	sysUserUUid, err := m.systemUserSv.addSysUser(req.Data, req.UserId)
+	var resp SystemManagerUserResp
+	if err == nil {
+		resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1001, ErrorCode: 0}, SystemManagerUserRespData{SysUserId: sysUserUUid, UserName: req.Data.UserName, LoginName: req.Data.LoginName, UserMobile: req.Data.UserMobile, UserEMail: req.Data.UserEMail}}
+	} else {
+		resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1001, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerUserRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
 
-//	var req wholeSalerRegisterReq
-//	err := json.Unmarshal(body, &req)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	}
-//	var resp wholeSalerRegisterResp
-//	tUser, err := m.usersv.queryUser(req.OpenId, req.UserId)
-//	if err == nil {
-//		if tUser == nil {
-//			resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "查不到对应的销售员userId=" + req.UserId + ",OpenId=" + req.OpenId, Cmd: 136}, wholeSalerRegisterRespData{}}
-//		} else {
-//			if tUser.User_type != 2 || tUser.User_status != 1 {
-//				resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "该销售员不存在或不是合法状态", Cmd: 136}, wholeSalerRegisterRespData{}}
-//			} else {
-//				tWholeSaler, err := m.wholesalersv.queryWholesaler(req.Data.WsMobile, req.Data.WsCompany)
-//				if err == nil {
-//					if tWholeSaler != nil {
-//						resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "该批发商已经注册", Cmd: 136}, wholeSalerRegisterRespData{}}
-//					} else {
-//						if req.Data.WsMobile == "" {
-//							resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "新增批发商手机号不能为空", Cmd: 136}, wholeSalerRegisterRespData{}}
-//						} else {
-//							uuid, passwd, err := m.wholesalersv.addWholesaler(req)
-//							if err == nil {
-//								resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 0, Cmd: 136}, wholeSalerRegisterRespData{WsId: uuid, WsName: req.Data.WsName, WsCompany: req.Data.WsCompany, WsMobile: req.Data.WsMobile, WsIdentityCode: passwd}}
-//							} else {
-//								resp = wholeSalerRegisterResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "新增批发商失败:" + err.Error(), Cmd: 136}, wholeSalerRegisterRespData{}}
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//		data, err := json.Marshal(resp)
-//		if err != nil {
-//			zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//			m.ivalidResp(w)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		w.Write([]byte(data))
-//		return
-//	}
-//	zap.L().Error(fmt.Sprintf("get saler_user error %s", err.Error()))
-//	m.ivalidResp(w)
-//	return
-//}
+func (m *httpHandler) updateSysUser(body []byte, w http.ResponseWriter) {
+	var req SystemManagerUserReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerUserResp
+	if len(req.Data.SysUserId) == 0 {
+		resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1003, ErrorCode: 9999, ErrorMsg: "sysUserId不能为空"}, SystemManagerUserRespData{}}
+	} else {
+		errMsg, err := m.systemUserSv.updateSysUser(req.Data, req.UserId)
+		if err == nil {
+			if len(errMsg) == 0 {
+				resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1003, ErrorCode: 0}, SystemManagerUserRespData{SysUserId: req.Data.SysUserId, UserName: req.Data.UserName, LoginName: req.Data.LoginName, UserMobile: req.Data.UserMobile, UserEMail: req.Data.UserEMail}}
+			} else {
+				resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1003, ErrorCode: 9999, ErrorMsg: errMsg}, SystemManagerUserRespData{}}
+			}
+		} else {
+			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1003, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerUserRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
 
-//func (m *httpHandler) userLogin(body []byte, w http.ResponseWriter) {
-//	var req userLoginReq
-//	err := json.Unmarshal(body, &req)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	}
-//	errMsg, openId, _, err := m.getWxUserInfo(req.Data.SpId, req.Data.WxCode)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("userLogin error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	} else if errMsg != "" {
-//		var respHead ResponseHead
-//		respHead = ResponseHead{RequestId: req.RequestHead.RequestId, ErrorCode: 9999, ErrorMsg: errMsg, Cmd: 133}
-//		jsonData, err := json.Marshal(respHead)
-//		if err != nil {
-//			zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//			m.ivalidResp(w)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		w.Write([]byte(jsonData))
-//		return
-//	}
-//	var resp userLoginResp
-//	if req.UserType != 1 { //零售商登录不需要密码，其他都需要
-//		tUser, err := m.usersv.queryUserByPasswd(req.Data.Passwd, req.Data.LoginName, req.UserType)
-//		if err == nil {
-//			if tUser == nil {
-//				resp = userLoginResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 1, ErrorMsg: "用户" + req.Data.LoginName + "登录失败: 用户名或密码不正确", Cmd: 133}, userLoginRespData{}}
-//			} else {
-//				err = m.usersv.bindUser(openId, tUser.User_uuid)
-//				// TODO 处理登录
-//				resp = userLoginResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 0, Cmd: 133}, userLoginRespData{OpenId: openId,
-//					UserId:   tUser.User_uuid,
-//					UserType: req.UserType,
-//					UserName: tUser.User_name.String,
-//					HeadIco:  ""}}
+func (m *httpHandler) deleteSysUser(body []byte, w http.ResponseWriter) {
+	var req SystemManagerUserReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerUserResp
+	if len(req.Data.SysUserId) == 0 {
+		resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1005, ErrorCode: 9999, ErrorMsg: "sysUserId不能为空"}, SystemManagerUserRespData{}}
 
-//			}
-//		}
-//	} else {
-//		tUser, err := m.usersv.queryUserByOpenId(openId)
-//		if err == nil {
-//			var usrUUid string
-//			if tUser == nil {
-//				usrUUid, err = m.usersv.addRetailer(openId)
-//				if err != nil {
-//					zap.L().Error(fmt.Sprintf("login add addRetailer error %s", err.Error()))
-//					m.ivalidResp(w)
-//					return
-//				}
-//			} else {
-//				// TODO 处理登录
-//				usrUUid = tUser.User_uuid
-//			}
-//			resp = userLoginResp{ResponseHead{RequestId: req.RequestId, ErrorCode: 0, Cmd: 133}, userLoginRespData{OpenId: openId,
-//				UserId:   usrUUid,
-//				UserType: req.UserType,
-//				UserName: "",
-//				HeadIco:  ""}}
-//		}
-//	}
-//	jsonData, err := json.Marshal(resp)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	}
-//	w.WriteHeader(http.StatusOK)
-//	w.Write([]byte(jsonData))
-//	return
-//}
+	} else {
+		err := m.systemUserSv.deleteSysUser(req.Data.SysUserId, req.UserId)
+		if err == nil {
+			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1005, ErrorCode: 0}, SystemManagerUserRespData{SysUserId: req.Data.SysUserId}}
+		} else {
+			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1005, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerUserRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
 
-//func (m *httpHandler) getWxUserInfo(spId string, wxCode string) (errMsg string, openId string, sessionKey string, err error) {
-//	var appid string
-//	var secret string
-//	tWxPluginProgram, err := m.wxpluginprogramsv.queryWxpluginProgram(spId)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("getWxUserInfo error %s", err.Error()))
-//		return "", "", "", err
-//	} else if tWxPluginProgram == nil {
-//		return "系统未配置对应的小程序", "", "", nil
-//	}
-//	appid = tWxPluginProgram.Appid
-//	secret = tWxPluginProgram.Appsecrete
-//	resp, err := http.Get("https://api.weixin.qq.com/sns/jscode2session?appid=" + appid + "&secret=" + secret + "&js_code=" + wxCode + "&grant_type=authorization_code")
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("get wx session_key error %s", err.Error()))
-//		return "", "", "", err
-//	}
-//	body, err := ioutil.ReadAll(resp.Body)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("get wx session_key error %s", err.Error()))
-//		return "", "", "", err
-//	}
-//	var dat map[string]interface{}
-//	if err := json.Unmarshal([]byte(body), &dat); err == nil {
-//		openid := dat["openid"]
-//		session_key := dat["session_key"]
-//		errcode := dat["errcode"]
-//		errMsg := dat["errMsg"]
-//		zap.L().Debug(fmt.Sprintf("openid:%s", openid.(string)))
-//		zap.L().Debug(fmt.Sprintf("session_key:%s", session_key.(string)))
-//		zap.L().Debug(fmt.Sprintf("errcode:%s", errcode.(string)))
-//		zap.L().Debug(fmt.Sprintf("errMsg:%s", errMsg.(string)))
-//		if errcode.(int) == 0 {
-//			return "", openid.(string), session_key.(string), nil
-//		}
-//		return "[" + wxCode + "] code2Session失败[" + strconv.Itoa(errcode.(int)) + "]:" + errMsg.(string), "", "", nil
-//	}
-//	return "", "", "", err
-//}
+func (m *httpHandler) querySysUser(body []byte, w http.ResponseWriter) {
+	var req SystemManagerUserReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerUserResp
+	var tSysUsers []TSysUser
+	tSysUsers, err = m.systemUserSv.querySysUserByExample(req.Data)
+	if err == nil {
+		if tSysUsers == nil || len(tSysUsers) == 0 {
+			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1007, ErrorCode: 9999, ErrorMsg: "未查到对应的系统用户"}, SystemManagerUserRespData{}}
+		} else {
+			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1007, ErrorCode: 0}, SystemManagerUserRespData{SysUserId: tSysUsers[0].User_uuid, UserName: tSysUsers[0].User_name.String, LoginName: tSysUsers[0].Login_name.String, UserMobile: tSysUsers[0].User_phone.String, UserEMail: tSysUsers[0].User_email.String}}
+		}
+	} else {
+		resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1007, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerUserRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
 
-//func (m *httpHandler) queryUser(body []byte, w http.ResponseWriter) {
-//	var req QueryUserReq
-//	err := json.Unmarshal(body, &req)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	}
-//	errMsg, openid, _, err := m.getWxUserInfo(req.Data.SpId, req.Data.WxCode)
-//	if err != nil {
-//		zap.L().Error(fmt.Sprintf("queryUser error %s", err.Error()))
-//		m.ivalidResp(w)
-//		return
-//	} else if errMsg != "" {
-//		var respHead ResponseHead
-//		respHead = ResponseHead{RequestId: req.RequestHead.RequestId, ErrorCode: 9999, ErrorMsg: errMsg, Cmd: req.RequestHead.Cmd}
-//		jsonData, err := json.Marshal(respHead)
-//		if err != nil {
-//			zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//			m.ivalidResp(w)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		w.Write([]byte(jsonData))
-//		return
-//	}
-//	tUser, err := m.usersv.queryUserByOpenId(openid)
-//	var resp QueryUserResp
-//	if err == nil {
-//		if tUser != nil {
-//			var respHead ResponseHead
-//			respHead = ResponseHead{RequestId: req.RequestHead.RequestId, ErrorCode: 0, Cmd: 131}
-//			var data QueryUserRespData
-//			data = QueryUserRespData{OpenId: tUser.Open_id.String, UserId: tUser.User_uuid, UserType: tUser.User_type, UserName: tUser.User_name.String, HeadIco: tUser.Head_portrait.String}
-//			resp = QueryUserResp{ResponseHead: respHead, Data: data}
-//		} else {
-//			resp = QueryUserResp{ResponseHead{RequestId: req.RequestHead.RequestId, ErrorCode: 1, Cmd: 131, ErrorMsg: "未查到对应的用户"}, QueryUserRespData{}}
-//		}
-//		jsonData, err := json.Marshal(resp)
-//		if err != nil {
-//			zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
-//			m.ivalidResp(w)
-//			return
-//		}
-//		w.WriteHeader(http.StatusOK)
-//		w.Write([]byte(jsonData))
-//		return
-//	}
-//	zap.L().Error(fmt.Sprintf("queryUser error %s", err.Error()))
-//	m.ivalidResp(w)
-//}
+func (m *httpHandler) addSysRole(body []byte, w http.ResponseWriter) {
+	var req SystemManagerRoleReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerRoleResp
+	roleUUid, err := m.systemRoleSv.addSysRole(req.Data, req.UserId)
+	if err == nil {
+		resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1021, ErrorCode: 0}, SystemManagerRoleRespData{RoleId: roleUUid, RoleName: req.Data.RoleName, RoleLevel: req.Data.RoleLevel}}
+	} else {
+		resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1021, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerRoleRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) updateSysRole(body []byte, w http.ResponseWriter) {
+	var req SystemManagerRoleReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerRoleResp
+	if len(req.Data.RoleId) == 0 {
+		resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1023, ErrorCode: 9999, ErrorMsg: "roleId不能为空"}, SystemManagerRoleRespData{}}
+	} else {
+		err := m.systemRoleSv.updateSysRole(req.Data, req.UserId)
+		if err == nil {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1023, ErrorCode: 0}, SystemManagerRoleRespData{RoleId: req.Data.RoleId, RoleName: req.Data.RoleName, RoleLevel: req.Data.RoleLevel}}
+		} else {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1023, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerRoleRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) deleteSysRole(body []byte, w http.ResponseWriter) {
+	var req SystemManagerRoleReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerRoleResp
+	if len(req.Data.RoleId) == 0 {
+		resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1025, ErrorCode: 9999, ErrorMsg: "roleId不能为空"}, SystemManagerRoleRespData{}}
+	} else {
+		err := m.systemRoleSv.deleteSysRole(req.Data, req.UserId)
+		if err == nil {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1025, ErrorCode: 0}, SystemManagerRoleRespData{RoleId: req.Data.RoleId}}
+		} else {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1025, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerRoleRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) querySysRole(body []byte, w http.ResponseWriter) {
+	var req SystemManagerRoleReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerRoleResp
+	var tSysRoles []TSysRole
+	tSysRoles, err = m.systemRoleSv.querySysRole(req.Data)
+	if err == nil {
+		if tSysRoles == nil || len(tSysRoles) == 0 {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1027, ErrorCode: 9999, ErrorMsg: "未查到对应的角色"}, SystemManagerRoleRespData{}}
+
+		} else {
+			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1027, ErrorCode: 0}, SystemManagerRoleRespData{RoleId: tSysRoles[0].Role_uuid, RoleName: tSysRoles[0].Role_name.String, RoleLevel: tSysRoles[0].Role_level}}
+		}
+	} else {
+		resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1027, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerRoleRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) addSysMenu(body []byte, w http.ResponseWriter) {
+	var req SystemManagerMenuReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	sysMenuUUid, err := m.systemMenuSv.addSysMenu(req.Data, req.UserId)
+	var resp SystemManagerMenuResp
+	if err == nil {
+		resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1041, ErrorCode: 0}, SystemManagerMenuRespData{MenuId: sysMenuUUid, MenuName: req.Data.MenuName, MenuLevel: req.Data.MenuLevel}}
+	} else {
+		resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1041, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerMenuRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) updateSysMenu(body []byte, w http.ResponseWriter) {
+	var req SystemManagerMenuReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerMenuResp
+	if len(req.Data.MenuId) == 0 {
+		resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1043, ErrorCode: 9999, ErrorMsg: "sysUserId不能为空"}, SystemManagerMenuRespData{}}
+	} else {
+		errMsg, err := m.systemMenuSv.updateSysMenu(req.Data, req.UserId)
+		if err == nil {
+			if len(errMsg) == 0 {
+				resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1043, ErrorCode: 0}, SystemManagerMenuRespData{MenuId: req.Data.MenuId, MenuName: req.Data.MenuName, MenuLevel: req.Data.MenuLevel}}
+			} else {
+				resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1043, ErrorCode: 9999, ErrorMsg: errMsg}, SystemManagerMenuRespData{}}
+			}
+		} else {
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1043, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerMenuRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) deleteSysMenu(body []byte, w http.ResponseWriter) {
+	var req SystemManagerMenuReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerMenuResp
+	if len(req.Data.MenuId) == 0 {
+		resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1045, ErrorCode: 9999, ErrorMsg: "MenuId不能为空"}, SystemManagerMenuRespData{}}
+	} else {
+		err := m.systemMenuSv.deleteSysMenu(req.Data.MenuId, req.UserId)
+		if err == nil {
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1045, ErrorCode: 0}, SystemManagerMenuRespData{MenuId: req.Data.MenuId}}
+		} else {
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1045, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerMenuRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) querySysMenu(body []byte, w http.ResponseWriter) {
+	var req SystemManagerMenuReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerMenuResp
+	var tSysMenus []TSysMenu
+	tSysMenus, err = m.systemMenuSv.querySysMeunByExample(req.Data)
+	if err == nil {
+		if tSysMenus == nil || len(tSysMenus) == 0 {
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 9999, ErrorMsg: "未查到对应的角色"}, SystemManagerMenuRespData{}}
+
+		} else {
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 0}, SystemManagerMenuRespData{MenuId: tSysMenus[0].Menu_uuid, MenuName: tSysMenus[0].Menu_name, MenuLevel: tSysMenus[0].Menu_level}}
+		}
+	} else {
+		resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 9999, ErrorMsg: err.Error()}, SystemManagerMenuRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) addSysPrivilege(body []byte, w http.ResponseWriter) {
+	var req SystemManagerPrivilegeReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var systemMangerPrivilegeRespDatas []SystemManagerPrivilegeRespData
+	systemMangerPrivilegeRespDatas, err = m.systemPrivilegeSv.addSysPrivilege(req.Data, req.UserId)
+	var resp SystemManagerPrivilegeResp
+	if err == nil {
+		resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1061, ErrorCode: 0}, []SystemManagerPrivilegeRespData{}}
+		for i := 0; i < len(systemMangerPrivilegeRespDatas); i++ {
+			resp.Data = append(resp.Data, systemMangerPrivilegeRespDatas[i])
+		}
+	} else {
+		resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1061, ErrorCode: 9999, ErrorMsg: err.Error()}, []SystemManagerPrivilegeRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) updateSysPrivilege(body []byte, w http.ResponseWriter) {
+	var req SystemManagerPrivilegeReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerPrivilegeResp
+	if len(req.Data.PowerId) == 0 {
+		resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1063, ErrorCode: 9999, ErrorMsg: "powerId不能为空"}, []SystemManagerPrivilegeRespData{}}
+	} else {
+		err := m.systemPrivilegeSv.updateSysPrivilege(req.Data, req.UserId)
+		if err == nil {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1063, ErrorCode: 0}, []SystemManagerPrivilegeRespData{}}
+		} else {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1063, ErrorCode: 9999, ErrorMsg: err.Error()}, []SystemManagerPrivilegeRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) deleteSysPrivilege(body []byte, w http.ResponseWriter) {
+	var req SystemManagerPrivilegeReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerPrivilegeResp
+	if len(req.Data.PowerId) == 0 {
+		resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1065, ErrorCode: 9999, ErrorMsg: "powerId不能为空"}, []SystemManagerPrivilegeRespData{}}
+	} else {
+		err := m.systemPrivilegeSv.deleteSysPrivilege(req.Data.PowerId, req.UserId)
+		if err == nil {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1065, ErrorCode: 0}, []SystemManagerPrivilegeRespData{}}
+		} else {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1065, ErrorCode: 9999, ErrorMsg: err.Error()}, []SystemManagerPrivilegeRespData{}}
+		}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}
+
+func (m *httpHandler) querySysPrivilege(body []byte, w http.ResponseWriter) {
+	var req SystemManagerPrivilegeReq
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	var resp SystemManagerPrivilegeResp
+	var tSysRoleMenus []TSysRoleMenu
+	tSysRoleMenus, err = m.systemPrivilegeSv.querySysPrivilegeByExample(req.Data)
+	if err == nil {
+		if tSysRoleMenus == nil || len(tSysRoleMenus) == 0 {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1067, ErrorCode: 9999, ErrorMsg: "未查到对应的权限记录"}, []SystemManagerPrivilegeRespData{}}
+		} else {
+			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1067, ErrorCode: 0}, []SystemManagerPrivilegeRespData{}}
+			for i := 0; i < len(tSysRoleMenus); i++ {
+				resp.Data = append(resp.Data, SystemManagerPrivilegeRespData{PowerId: tSysRoleMenus[i].Power_uuid, RoleId: tSysRoleMenus[i].Role_uuid, MenuId: tSysRoleMenus[i].Menu_uuid})
+			}
+		}
+	} else {
+		resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1067, ErrorCode: 9999, ErrorMsg: err.Error()}, []SystemManagerPrivilegeRespData{}}
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error(fmt.Sprintf("json transfer error %s", err.Error()))
+		m.ivalidResp(w)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonData))
+	return
+}

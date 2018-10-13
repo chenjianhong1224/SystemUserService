@@ -6,7 +6,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-type tSysUser struct {
+type TSysUser struct {
 	User_id       int64
 	User_uuid     string
 	User_name     sql.NullString
@@ -26,7 +26,7 @@ type tSysUser struct {
 	Remark        sql.NullString
 }
 
-type tSysRole struct {
+type TSysRole struct {
 	Role_id     int64
 	Role_uuid   string
 	Role_name   sql.NullString
@@ -41,7 +41,9 @@ type tSysRole struct {
 	Remark      sql.NullString
 }
 
-type tSysRoleMenu struct {
+type TSysRoleMenu struct {
+	Power_id    int64
+	Power_uuid  string
 	Role_uuid   string
 	Menu_uuid   string
 	Status      int32
@@ -51,7 +53,7 @@ type tSysRoleMenu struct {
 	Update_user sql.NullString
 }
 
-type tSysRoleUser struct {
+type TSysRoleUser struct {
 	Role_uuid   string
 	User_uuid   string
 	Status      int32
@@ -59,4 +61,23 @@ type tSysRoleUser struct {
 	Create_user sql.NullString
 	Update_time mysql.NullTime
 	Update_user sql.NullString
+}
+
+type TSysMenu struct {
+	Menu_id     int64
+	Menu_uuid   string
+	Menu_name   string
+	Is_leaf     int32
+	Parent_uuid sql.NullString
+	Menu_level  int32
+	Link_path   sql.NullString
+	Menu_ico    sql.NullString
+	Sys_code    sql.NullString
+	Open_type   sql.NullInt64
+	Menu_status int32
+	Create_time mysql.NullTime
+	Create_user sql.NullString
+	Update_time mysql.NullTime
+	Update_user sql.NullString
+	Remark      sql.NullString
 }

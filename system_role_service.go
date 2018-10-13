@@ -16,25 +16,19 @@ func (m *system_role_service) addSysRole(systemManagerRole SystemManagerRoleReqD
 	args := []interface{}{}
 	args = append(args, uid.String())
 	args = append(args, systemManagerRole.RoleName)
-	var isLeaf int32
-	isLeaf = 0
-	if len(systemManagerRole.RoleParent) != 0 {
-		isLeaf = 1
-	}
-	args = append(args, isLeaf)
 	args = append(args, systemManagerRole.RoleParent)
 	args = append(args, systemManagerRole.RoleLevel)
 	args = append(args, opUserId)
 	args = append(args, opUserId)
 	execReq := SqlExecRequest{
-		SQL:  "insert into t_sys_role(Role_uuid, Role_name, Is_leaf, Parent_uuid, Role_level, Role_status, Create_time, Create_user, Update_time, Update_user) values (?, ?, ?, ?, ?, 1, now(), ?, now(), ?)",
+		SQL:  "insert into t_sys_role(Role_uuid, Role_name, Parent_uuid, Role_level, Role_status, Create_time, Create_user, Update_time, Update_user) values (?, ?, ?, ?, 1, now(), ?, now(), ?)",
 		Args: args,
 	}
 	var execReqList = []SqlExecRequest{execReq}
 	for i := 0; i < len(systemManagerRole.UserList); i++ {
 		args2 := []interface{}{}
 		args2 = append(args2, uid.String())
-		args2 = append(args2, systemManagerRole.UserList[i].SysUserId)
+		args2 = append(args2, systemManagerRole.UserList[i])
 		args2 = append(args2, opUserId)
 		args2 = append(args2, opUserId)
 		execReq2 := SqlExecRequest{
@@ -60,7 +54,7 @@ func (m *system_role_service) deleteSysRole(systemManagerRole SystemManagerRoleR
 		args2 := []interface{}{}
 		args2 = append(args2, opUserId)
 		args2 = append(args2, systemManagerRole.RoleId)
-		args2 = append(args2, systemManagerRole.UserList[i].SysUserId)
+		args2 = append(args2, systemManagerRole.UserList[i])
 		execReq2 := SqlExecRequest{
 			SQL:  "update t_sys_role_user set Status=0, Update_time=now(), Update_user=? where role_uuid=? and user_uuid=?",
 			Args: args2,
@@ -116,7 +110,7 @@ func (m *system_role_service) updateSysRole(systemManagerRole SystemManagerRoleR
 	for i := 0; i < len(systemManagerRole.UserList); i++ {
 		args2 := []interface{}{}
 		args2 = append(args2, systemManagerRole.RoleId)
-		args2 = append(args2, systemManagerRole.UserList[0].SysUserId)
+		args2 = append(args2, systemManagerRole.UserList[0])
 		args2 = append(args2, opUserId)
 		args2 = append(args2, opUserId)
 		execReq2 := SqlExecRequest{
@@ -129,12 +123,29 @@ func (m *system_role_service) updateSysRole(systemManagerRole SystemManagerRoleR
 	return err
 }
 
-func (m *system_role_service) querySysUser(roleName string) ([]tSysRole, error) {
+func (m *system_role_service) querySysRole(systemManagerRole SystemManagerRoleReqData) ([]TSysRole, error) {
 	args := []interface{}{}
-	args = append(args, roleName)
-	tmp := tSysRole{}
+	var sql string
+	sql = "select Role_id, Role_uuid, Role_name, Is_leaf, Parent_uuid, Role_level, Role_status, Create_time, Create_user, Update_time, Update_user from t_sys_role where 1=1"
+	if len(systemManagerRole.RoleId) != 0 {
+		sql += " Role_uuid = ?"
+		args = append(args, systemManagerRole.RoleId)
+	}
+	if len(systemManagerRole.RoleName) != 0 {
+		sql += " Role_name = ?"
+		args = append(args, systemManagerRole.RoleName)
+	}
+	if systemManagerRole.RoleLevel != 0 {
+		sql += " Role_level = ?"
+		args = append(args, systemManagerRole.RoleLevel)
+	}
+	if len(systemManagerRole.RoleParent) != 0 {
+		sql += " Parent_uuid = ?"
+		args = append(args, systemManagerRole.RoleParent)
+	}
+	tmp := TSysRole{}
 	queryReq := &SqlQueryRequest{
-		SQL:         "select Role_id, Role_uuid, Role_name, Is_leaf, Parent_uuid, Role_level, Role_status, Create_time, Create_user, Update_time, Update_user from t_sys_role where Role_name = ?",
+		SQL:         sql,
 		Args:        args,
 		RowTemplate: tmp}
 	reply := m.d.dbCli.Query(queryReq)
@@ -143,9 +154,9 @@ func (m *system_role_service) querySysUser(roleName string) ([]tSysRole, error) 
 		zap.L().Error(fmt.Sprintf("query sys role error:%s", queryRep.Err.Error()))
 		return nil, queryRep.Err
 	}
-	var returnRoles []tSysRole = []tSysRole{}
+	var returnRoles []TSysRole = []TSysRole{}
 	for i := 0; i < len(queryRep.Rows); i++ {
-		returnRoles = append(returnRoles, queryRep.Rows[i].(tSysRole))
+		returnRoles = append(returnRoles, queryRep.Rows[i].(TSysRole))
 	}
 	return returnRoles, nil
 }

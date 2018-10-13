@@ -82,7 +82,7 @@ func (m *system_user_service) deleteSysUser(userId string, opUserId string) erro
 func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserReqData, opUserId string) (string, error) {
 	args := []interface{}{}
 	args = append(args, systemManagerUser.SysUserId)
-	tmp := tSysUser{}
+	tmp := TSysUser{}
 	queryReq := &SqlQueryRequest{
 		SQL:         "select 1 from t_sys_user where User_uuid = ?",
 		Args:        args,
@@ -125,7 +125,7 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 		args6 := []interface{}{}
 		args6 = append(args6, systemManagerUser.RoleList[i].RoleId)
 		args6 = append(args6, systemManagerUser.SysUserId)
-		tmp := tSysRoleUser{}
+		tmp := TSysRoleUser{}
 		queryReq := &SqlQueryRequest{
 			SQL:         "select 1 from t_sys_role_user where Role_uuid = ? and User_uuid = ?",
 			Args:        args6,
@@ -167,12 +167,29 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 	return "", nil
 }
 
-func (m *system_user_service) querySysUser(loginName string) (*tSysUser, error) {
+func (m *system_user_service) querySysUserByExample(example SystemManagerUserReqData) ([]TSysUser, error) {
 	args := []interface{}{}
-	args = append(args, loginName)
-	tmp := tSysUser{}
+	var sql string
+	sql = "select User_id, User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Create_time, Create_user, Update_time, Update_user from t_sys_user where 1=1 "
+	if len(example.LoginName) != 0 {
+		sql += " and Login_name = ? "
+		args = append(args, example.LoginName)
+	}
+	if len(example.SysUserId) != 0 {
+		sql += " and User_uuid = ? "
+		args = append(args, example.SysUserId)
+	}
+	if len(example.UserName) != 0 {
+		sql += " and User_name = ? "
+		args = append(args, example.UserName)
+	}
+	if len(example.UserMobile) != 0 {
+		sql += " and User_phone = ? "
+		args = append(args, example.UserMobile)
+	}
+	tmp := TSysUser{}
 	queryReq := &SqlQueryRequest{
-		SQL:         "select User_id, User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Create_time, Create_user, Update_time, Update_user from t_sys_user where Login_name = ?",
+		SQL:         sql,
 		Args:        args,
 		RowTemplate: tmp}
 	reply := m.d.dbCli.Query(queryReq)
@@ -184,5 +201,9 @@ func (m *system_user_service) querySysUser(loginName string) (*tSysUser, error) 
 	if len(queryRep.Rows) == 0 {
 		return nil, nil
 	}
-	return queryRep.Rows[0].(*tSysUser), nil
+	var returnSysUser []TSysUser = []TSysUser{}
+	for i := 0; i < len(queryRep.Rows); i++ {
+		returnSysUser = append(returnSysUser, queryRep.Rows[i].(TSysUser))
+	}
+	return returnSysUser, nil
 }
