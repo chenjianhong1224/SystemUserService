@@ -14,18 +14,14 @@ type ResponseHead struct {
 }
 
 type SystemManagerUserReqData struct {
-	SysUserId    string                         `json:"sysUserId"`
-	UserName     string                         `json:"userName"`
-	LoginName    string                         `json:"loginName"`
-	UserMobile   string                         `json:"userMobile"`
-	UserEMail    string                         `json:"userEMail"`
-	Passwd       string                         `json:"passwd"`
-	HeadPortrait string                         `json:"headPortrait"`
-	RoleList     []SystemManagerUserReqDataRole `json:"roleList"`
-}
-
-type SystemManagerUserReqDataRole struct {
-	RoleId string `json:"roleId"`
+	SysUserId    string   `json:"sysUserId"`
+	UserName     string   `json:"userName"`
+	LoginName    string   `json:"loginName"`
+	UserMobile   string   `json:"userMobile"`
+	UserEMail    string   `json:"userEMail"`
+	Passwd       string   `json:"passwd"`
+	HeadPortrait string   `json:"headPortrait"`
+	RoleList     []string `json:"roleList"`
 }
 
 type SystemManagerUserReq struct {

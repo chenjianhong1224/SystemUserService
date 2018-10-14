@@ -18,7 +18,7 @@ type TSysUser struct {
 	User_status   int32
 	Login_time    mysql.NullTime
 	Login_from    sql.NullString
-	Expiry_time   mysql.NullTime
+	Expire_time   mysql.NullTime
 	Create_time   mysql.NullTime
 	Create_user   sql.NullString
 	Update_time   mysql.NullTime

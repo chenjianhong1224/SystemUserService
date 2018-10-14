@@ -27,13 +27,13 @@ func (m *system_user_service) addSysUser(systemManagerUser SystemManagerUserReqD
 	args = append(args, opUserId)
 	args = append(args, opUserId)
 	execReq := SqlExecRequest{
-		SQL:  "insert into t_sys_user(User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Create_time, Create_user, Update_time, Update_user) values (?, ?, ?, ?, ?, ?, ?, ?, 1, now(), ?, now(), ?)",
+		SQL:  "insert into t_sys_user(User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Create_time, Create_user, Update_time, Update_user) values (?, ?, ?, ?, ?, ?, ?, 1, now(), ?, now(), ?)",
 		Args: args,
 	}
 	var execReqList = []SqlExecRequest{execReq}
 	for i := 0; i < len(systemManagerUser.RoleList); i++ {
 		args2 := []interface{}{}
-		args2 = append(args2, systemManagerUser.RoleList[i].RoleId)
+		args2 = append(args2, systemManagerUser.RoleList[i])
 		args2 = append(args2, uid.String())
 		args2 = append(args2, opUserId)
 		args2 = append(args2, opUserId)
@@ -84,7 +84,7 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 	args = append(args, systemManagerUser.SysUserId)
 	tmp := TSysUser{}
 	queryReq := &SqlQueryRequest{
-		SQL:         "select 1 from t_sys_user where User_uuid = ?",
+		SQL:         "select  User_id, User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Login_time, Login_from, Expire_time, Create_time, Create_user, Update_time, Update_user, Remark  from t_sys_user where User_uuid = ?",
 		Args:        args,
 		RowTemplate: tmp}
 	reply := m.d.dbCli.Query(queryReq)
@@ -102,7 +102,6 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 	args3 = append(args3, systemManagerUser.LoginName)
 	args3 = append(args3, systemManagerUser.UserEMail)
 	args3 = append(args3, systemManagerUser.UserMobile)
-	args3 = append(args3, systemManagerUser.LoginName)
 	data := []byte(systemManagerUser.Passwd)
 	has := md5.Sum(data)
 	args3 = append(args3, fmt.Sprintf("%x", has))
@@ -123,11 +122,11 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 	var execReqList = []SqlExecRequest{execReq3, execReq4}
 	for i := 0; i < len(systemManagerUser.RoleList); i++ {
 		args6 := []interface{}{}
-		args6 = append(args6, systemManagerUser.RoleList[i].RoleId)
+		args6 = append(args6, systemManagerUser.RoleList[i])
 		args6 = append(args6, systemManagerUser.SysUserId)
 		tmp := TSysRoleUser{}
 		queryReq := &SqlQueryRequest{
-			SQL:         "select 1 from t_sys_role_user where Role_uuid = ? and User_uuid = ?",
+			SQL:         "select Role_uuid, User_uuid, Status, Create_time, Create_user, Update_time, Update_user from t_sys_role_user where Role_uuid = ? and User_uuid = ?",
 			Args:        args6,
 			RowTemplate: tmp}
 		reply := m.d.dbCli.Query(queryReq)
@@ -140,7 +139,7 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 			args5 := []interface{}{}
 			args5 = append(args5, opUserId)
 			args5 = append(args5, systemManagerUser.SysUserId)
-			args5 = append(args5, systemManagerUser.RoleList[i].RoleId)
+			args5 = append(args5, systemManagerUser.RoleList[i])
 			execReq5 := SqlExecRequest{
 				SQL:  "update t_sys_role_user set Status = 1, Update_time = now(), Update_User = ? where User_uuid = ? and Role_uuid = ?",
 				Args: args5,
@@ -148,12 +147,12 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 			execReqList = append(execReqList, execReq5)
 		} else {
 			args5 := []interface{}{}
-			args5 = append(args5, systemManagerUser.RoleList[i].RoleId)
+			args5 = append(args5, systemManagerUser.RoleList[i])
 			args5 = append(args5, systemManagerUser.SysUserId)
 			args5 = append(args5, opUserId)
 			args5 = append(args5, opUserId)
 			execReq5 := SqlExecRequest{
-				SQL:  "insert into t_sys_role_user(Role_uuid, User_uuid, Status, Create_user, Create_time, Update_time, Update_User) values (?, ?, 1, ?, now(), ?, now())",
+				SQL:  "insert into t_sys_role_user(Role_uuid, User_uuid, Status, Create_user, Create_time, Update_time, Update_User) values (?, ?, 1, ?, now(), now(), ?)",
 				Args: args5,
 			}
 			execReqList = append(execReqList, execReq5)
@@ -167,10 +166,10 @@ func (m *system_user_service) updateSysUser(systemManagerUser SystemManagerUserR
 	return "", nil
 }
 
-func (m *system_user_service) querySysUserByExample(example SystemManagerUserReqData) ([]TSysUser, error) {
+func (m *system_user_service) queryAvailableSysUserByExample(example SystemManagerUserReqData) ([]*TSysUser, error) {
 	args := []interface{}{}
 	var sql string
-	sql = "select User_id, User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Create_time, Create_user, Update_time, Update_user from t_sys_user where 1=1 "
+	sql = "select User_id, User_uuid, User_name, Login_name, User_email, User_phone, Login_passwd, Head_portrait, User_status, Login_time, Login_from, Expire_time, Create_time, Create_user, Update_time, Update_user, Remark from t_sys_user where user_status=1 "
 	if len(example.LoginName) != 0 {
 		sql += " and Login_name = ? "
 		args = append(args, example.LoginName)
@@ -201,9 +200,9 @@ func (m *system_user_service) querySysUserByExample(example SystemManagerUserReq
 	if len(queryRep.Rows) == 0 {
 		return nil, nil
 	}
-	var returnSysUser []TSysUser = []TSysUser{}
+	var returnSysUser []*TSysUser = []*TSysUser{}
 	for i := 0; i < len(queryRep.Rows); i++ {
-		returnSysUser = append(returnSysUser, queryRep.Rows[i].(TSysUser))
+		returnSysUser = append(returnSysUser, queryRep.Rows[i].(*TSysUser))
 	}
 	return returnSysUser, nil
 }

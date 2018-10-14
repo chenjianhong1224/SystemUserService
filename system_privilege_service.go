@@ -43,8 +43,8 @@ func (m *system_privilege_service) deleteSysPrivilege(powerId string, opUserId s
 	args := []interface{}{}
 	args = append(args, opUserId)
 	args = append(args, powerId)
-	execReq := SqlExecRequest{
-		SQL:  "update t_sys_role_menu set Status = 0, Update_time = now(), Update_use =? where power_id = ?",
+	execReq := &SqlExecRequest{
+		SQL:  "update t_sys_role_menu set Status = 0, Update_time = now(), Update_user =? where power_uuid = ?",
 		Args: args,
 	}
 	sqlReply := m.d.dbCli.Query(execReq)
@@ -62,7 +62,7 @@ func (m *system_privilege_service) updateSysPrivilege(systemMangerPrivilegeData 
 		args = append(args, opUserId)
 		args = append(args, systemMangerPrivilegeData.RoleId)
 		execReq := SqlExecRequest{
-			SQL:  "update t_sys_role_menu set Status = 0, Update_time = now(), Update_use =? where role_id = ?",
+			SQL:  "update t_sys_role_menu set Status = 0, Update_time = now(), Update_user =? where role_uuid = ?",
 			Args: args,
 		}
 		execReqList = append(execReqList, execReq)
@@ -87,17 +87,17 @@ func (m *system_privilege_service) updateSysPrivilege(systemMangerPrivilegeData 
 	return nil
 }
 
-func (m *system_privilege_service) querySysPrivilegeByExample(systemMangerPrivilegeData SystemManagerPrivilegeData) ([]TSysRoleMenu, error) {
+func (m *system_privilege_service) queryAvailableSysPrivilegeByExample(systemMangerPrivilegeData SystemManagerPrivilegeData) ([]*TSysRoleMenu, error) {
 	args := []interface{}{}
 	var sql string
-	sql = "select Power_id, Power_uuid, Role_uuid, Menu_uuid, Status, Create_time, Create_user, Update_time, Update_user from t_sys_role_menu where 1=1 "
+	sql = "select PowerId, Power_uuid, Role_uuid, Menu_uuid, Status, Create_time, Create_user, Update_time, Update_user from t_sys_role_menu where status=1 "
 	if len(systemMangerPrivilegeData.PowerId) != 0 {
 		args = append(args, systemMangerPrivilegeData.PowerId)
-		sql += " Power_uuid = ? "
+		sql += " and Power_uuid = ? "
 	}
 	if len(systemMangerPrivilegeData.RoleId) != 0 {
 		args = append(args, systemMangerPrivilegeData.RoleId)
-		sql += " Role_uuid = ? "
+		sql += " and Role_uuid = ? "
 	}
 	tmp := TSysRoleMenu{}
 	queryReq := &SqlQueryRequest{
@@ -110,9 +110,9 @@ func (m *system_privilege_service) querySysPrivilegeByExample(systemMangerPrivil
 		zap.L().Error(fmt.Sprintf("query sys role menu error:%s", queryRep.Err.Error()))
 		return nil, queryRep.Err
 	}
-	var returnRoleMenus []TSysRoleMenu = []TSysRoleMenu{}
+	var returnRoleMenus []*TSysRoleMenu = []*TSysRoleMenu{}
 	for i := 0; i < len(queryRep.Rows); i++ {
-		returnRoleMenus = append(returnRoleMenus, queryRep.Rows[i].(TSysRoleMenu))
+		returnRoleMenus = append(returnRoleMenus, queryRep.Rows[i].(*TSysRoleMenu))
 	}
 	return returnRoleMenus, nil
 }

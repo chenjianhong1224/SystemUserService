@@ -244,8 +244,8 @@ func (m *httpHandler) querySysUser(body []byte, w http.ResponseWriter) {
 		return
 	}
 	var resp SystemManagerUserResp
-	var tSysUsers []TSysUser
-	tSysUsers, err = m.systemUserSv.querySysUserByExample(req.Data)
+	var tSysUsers []*TSysUser
+	tSysUsers, err = m.systemUserSv.queryAvailableSysUserByExample(req.Data)
 	if err == nil {
 		if tSysUsers == nil || len(tSysUsers) == 0 {
 			resp = SystemManagerUserResp{ResponseHead{RequestId: req.RequestId, Cmd: 1007, ErrorCode: 9999, ErrorMsg: "未查到对应的系统用户"}, SystemManagerUserRespData{}}
@@ -361,8 +361,8 @@ func (m *httpHandler) querySysRole(body []byte, w http.ResponseWriter) {
 		return
 	}
 	var resp SystemManagerRoleResp
-	var tSysRoles []TSysRole
-	tSysRoles, err = m.systemRoleSv.querySysRole(req.Data)
+	var tSysRoles []*TSysRole
+	tSysRoles, err = m.systemRoleSv.queryAvailableSysRole(req.Data)
 	if err == nil {
 		if tSysRoles == nil || len(tSysRoles) == 0 {
 			resp = SystemManagerRoleResp{ResponseHead{RequestId: req.RequestId, Cmd: 1027, ErrorCode: 9999, ErrorMsg: "未查到对应的角色"}, SystemManagerRoleRespData{}}
@@ -483,11 +483,11 @@ func (m *httpHandler) querySysMenu(body []byte, w http.ResponseWriter) {
 		return
 	}
 	var resp SystemManagerMenuResp
-	var tSysMenus []TSysMenu
-	tSysMenus, err = m.systemMenuSv.querySysMeunByExample(req.Data)
+	var tSysMenus []*TSysMenu
+	tSysMenus, err = m.systemMenuSv.queryAvailableSysMeunByExample(req.Data)
 	if err == nil {
 		if tSysMenus == nil || len(tSysMenus) == 0 {
-			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 9999, ErrorMsg: "未查到对应的角色"}, SystemManagerMenuRespData{}}
+			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 9999, ErrorMsg: "未查到对应的菜单"}, SystemManagerMenuRespData{}}
 
 		} else {
 			resp = SystemManagerMenuResp{ResponseHead{RequestId: req.RequestId, Cmd: 1047, ErrorCode: 0}, SystemManagerMenuRespData{MenuId: tSysMenus[0].Menu_uuid, MenuName: tSysMenus[0].Menu_name, MenuLevel: tSysMenus[0].Menu_level}}
@@ -605,8 +605,8 @@ func (m *httpHandler) querySysPrivilege(body []byte, w http.ResponseWriter) {
 		return
 	}
 	var resp SystemManagerPrivilegeResp
-	var tSysRoleMenus []TSysRoleMenu
-	tSysRoleMenus, err = m.systemPrivilegeSv.querySysPrivilegeByExample(req.Data)
+	var tSysRoleMenus []*TSysRoleMenu
+	tSysRoleMenus, err = m.systemPrivilegeSv.queryAvailableSysPrivilegeByExample(req.Data)
 	if err == nil {
 		if tSysRoleMenus == nil || len(tSysRoleMenus) == 0 {
 			resp = SystemManagerPrivilegeResp{ResponseHead{RequestId: req.RequestId, Cmd: 1067, ErrorCode: 9999, ErrorMsg: "未查到对应的权限记录"}, []SystemManagerPrivilegeRespData{}}

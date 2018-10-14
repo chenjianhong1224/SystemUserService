@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("cfg:%-v\n", cfg)
+	fmt.Printf("cfg:%+v\n", cfg)
 
 	db := newDbOperator(cfg)
 
@@ -65,7 +65,7 @@ func main() {
 
 	BuildLogger(&cfg.Logger)
 
-	svc := &httpHandler{cfg: cfg, systemUserSv: &system_user_service{d: db}}
+	svc := &httpHandler{cfg: cfg, systemUserSv: &system_user_service{d: db}, systemRoleSv: &system_role_service{d: db}, systemMenuSv: &system_menu_service{d: db}, systemPrivilegeSv: &system_privilege_service{d: db}}
 	if err = svc.start(); err != nil {
 		panic(err)
 	}
