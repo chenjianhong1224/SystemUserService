@@ -1,5 +1,5 @@
 server:
-  endpoint: :80
+  endpoint: :8034
   http_read_timeout: 3s
   http_write_timeout: 10s
   max_head_size: 2048000
